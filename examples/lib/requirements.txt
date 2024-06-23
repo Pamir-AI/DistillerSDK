@@ -1,0 +1,24 @@
+# for stable diffusion
+torch
+transformers
+accelerate
+diffusers
+optimum[onnxruntime]
+
+# for llm
+llama-cpp-python
+
+# for stt
+faster-whisper
+
+# for sagmentation / inpaint
+opencv-python
+ultralytics
+clip @ git+https://github.com/ultralytics/CLIP.git
+
+# for APIs
+python-dotenv
+websocket-client
+openai
+deepgram-sdk==3.*
+elevenlabs

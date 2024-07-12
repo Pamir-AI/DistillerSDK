@@ -94,6 +94,15 @@ class CamPage(Page):
         self.dialog.add_component(
             TextBox(text="display", font_path=font_path, font_size=dialog_font_size))
 
+        self.dialog_temp = ScrollGUI(
+            dialog_box_size[0],
+            dialog_box_size[1],
+            dialog_box_bounding_box,
+            init_image=Image.open(dialog_box_path),
+            position=(0, EINK_HEIGHT - dialog_box_size[1]))
+        self.dialog_temp.add_component(
+            TextBox(text="temp_display", font_path=font_path, font_size=dialog_font_size))
+        
         # cam preview interface
         self.dialog2 = ScrollGUI(
             dialog_box_size[0],
@@ -171,7 +180,7 @@ class CamPage(Page):
 
         if input == 0 or input == 1:
             # skip if in cam preview mode
-            if self.interface == self.dialog2 : return 
+            if self.interface == self.dialog_temp or self.interface == self.dialog2: return # disable up/down button for those 2
 
             self.interface.index_up() if input == 0 else self.interface.index_down()
             self.interface.render_scroll()  # update dialog scroll
@@ -283,6 +292,11 @@ class CamPage(Page):
         self.cam.preview()  # start cam
         self.interface = self.dialog2  # change interface for taking picture
 
+    def temp_display(self):
+        # return to main menu 
+        self.interface = self.dialog
+        self.refresh()
+
     def take_picture(self):
         try : 
             if self.cam.thread_worker and self.cam.thread_worker.active.is_set():  # cam started
@@ -302,7 +316,7 @@ class CamPage(Page):
             logging.error(f"Error take_picture: {e}")
         finally : 
             logging.info("**image taken**")
-            self.interface = self.dialog
+            self.interface = self.dialog_temp
             # self.refresh() # skip the dialog overlap
 
 class App(Application):

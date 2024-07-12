@@ -41,8 +41,8 @@ hardware = [
     'pyaudio',
     'pyalsaaudio',
     # cam
-    'rpi-libcamera',
-    'rpi-kms',
+    #'rpi-libcamera',
+    #'rpi-kms',
     'picamera2'
 ]
 

@@ -12,6 +12,7 @@ from ultralytics import FastSAM
 import os
 import sys
 import time
+from datetime import datetime
 import random
 import json
 
@@ -29,9 +30,6 @@ from distiller.utils.image import paste_image, scale_image, show_text, merge_inp
 import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
-
-
-# segmentations
 
 
 # UI constants
@@ -58,6 +56,7 @@ inpaint_model_config = {
     'sam_prompt': 'face' # edit this fot SAM prompt
 }
 inpaint_path = "./temp-inpaint.png"
+saving_path = "/home/distiller/DistillerSDK/assets"
 
 # others
 sound_bite = resource_filename('distiller', os.path.join(
@@ -171,6 +170,9 @@ class CamPage(Page):
             return
 
         if input == 0 or input == 1:
+            # skip if in cam preview mode
+            if self.interface == self.dialog2 : return 
+
             self.interface.index_up() if input == 0 else self.interface.index_down()
             self.interface.render_scroll()  # update dialog scroll
             # main ui render
@@ -220,7 +222,11 @@ class CamPage(Page):
         self.ui.canvas.register_canvas_image() # cache image 
         self.render_page(self.ui.get_image(), format='2bit')
 
-    def display(self):
+    def display(self, image=None):
+        if image:
+            self.render_page(paste_image(image, self.ui.get_image(), border=True), format='2bit')
+            return
+        
         if os.path.exists(inpaint_path):  # reload inpaint
             self.render_page(paste_image(Image.open(
                 inpaint_path), self.ui.get_image(), border=True), format='2bit')
@@ -273,21 +279,31 @@ class CamPage(Page):
         self.app.buttons.unlock()  # button unlock
 
     def new_picture(self):
+        self._show_text("[open cam ...]")
         self.cam.preview()  # start cam
-        self.interface = self.dialog2  # change interface
+        self.interface = self.dialog2  # change interface for taking picture
 
     def take_picture(self):
         try : 
             if self.cam.thread_worker and self.cam.thread_worker.active.is_set():  # cam started
                 self.captured_image = self.cam.capture()  # stop cam, save pic
-                self.ui.paste_image(self.captured_image)  # paste image display
+                # save to asset folder so we can revisit in gallery
+                self.captured_image.save(f"{saving_path}/{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.png")
+                # show captured image in display
+                self.ui.canvas.flush()  # flush out texts
+                self.display(self.captured_image)
+                
+                 # cache the image 
+                self.ui.paste_image(self.captured_image)
+                self.ui.canvas.register_canvas_image()
+
                 time.sleep(0.5)
         except Exception as e:
             logging.error(f"Error take_picture: {e}")
         finally : 
             logging.info("**image taken**")
             self.interface = self.dialog
-            self.refresh()
+            # self.refresh() # skip the dialog overlap
 
 class App(Application):
     def __init__(self):

@@ -81,6 +81,14 @@ class SelectionPage(Page):
                 'position'))  # update on main ui
             self.render_page(self.ui.get_image(), format='2bit')  # render
             return
+        
+        if input == 2:
+            # full screen display
+            self.display(self.get_image(self.dialog.index))
+            return
+
+    def display(self, image):
+        self.render_page(paste_image(image, self.ui.get_image(), border=True), format='2bit')
 
 
 class App(Application):

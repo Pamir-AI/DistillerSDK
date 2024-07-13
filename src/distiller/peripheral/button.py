@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+from PIL import Image
 from pkg_resources import resource_filename
 from distiller.drivers.sam import SAM
 from distiller.gui.components import ScrollGUI, Box, TextBox, Text, Canvas
@@ -138,6 +139,9 @@ class Button(SAM):
         logging.info("SHUTDOWN TRIGGERED")
         if self.hijacked_eink:
             self.hijacked_eink.eink.clear_screen()
+            self.hijacked_eink.update_screen_1bit(Image.open(resource_filename(
+    'distiller', os.path.join('resources', 'idle-frame.png'))))
+
         self.ser.write('15\n'.encode())
         self.ser.write('15\n'.encode())
         time.sleep(1)

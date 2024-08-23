@@ -4,8 +4,6 @@ from eink_driver_sam import einkDSP_SAM
 import _thread
 from machine import WDT
 
-DEBUG = False
-
 #Instruction Set
 EncodeTable = {"BTN_UP": 0b1, "BTN_DOWN": 0b10, "BTN_SELECT": 0b100, "SHUT_DOWN": 0b1000}
 
@@ -16,16 +14,13 @@ upBTN = machine.Pin(17, machine.Pin.IN, machine.Pin.PULL_DOWN)
 downBTN = machine.Pin(18, machine.Pin.IN, machine.Pin.PULL_DOWN)
 powerStatus = machine.Pin(21, machine.Pin.OUT)
 einkStatus = machine.Pin(9, machine.Pin.OUT)
-einkMux = machine.Pin(22, machine.Pin.OUT)
-
 sam_interrupt = machine.Pin(2, machine.Pin.OUT)
 
 nukeUSB = machine.Pin(19, machine.Pin.OUT, value = 0)
 
 # Setup UART0 on GPIO0 (TX) and GPIO1 (RX)
 uart0 = machine.UART(0, baudrate=9600, tx=machine.Pin(0), rx=machine.Pin(1))
-powerStatus.high()
-einkMux.high()
+powerStatus.low()
 einkStatus.low()
 
 eink = einkDSP_SAM()
@@ -89,7 +84,6 @@ def eink_task():
             repeat += 1
         eink.de_init()
         einkRunning = False
-        einkMux.low() # Let SoM take control of the eink
         print("Eink Task Returned")
     except Exception as e:
         print(f"Exception {e}")
@@ -104,11 +98,9 @@ def delayed_power_off():
     start_time = utime.ticks_ms()
     while utime.ticks_diff(utime.ticks_ms(), start_time) < 4000:
         utime.sleep_ms(10)
-    powerStatus.high()  # inverted logic
-    einkStatus.low()
-    einkMux.high() 
-    if not DEBUG :
-        nukeUSB.low()
+    powerStatus.low()
+    einkStatus.low()  # inverted logic
+    nukeUSB.low()
 
     try:
         if eink.init == False:
@@ -125,7 +117,7 @@ def delayed_power_off():
 
 while True:
     wdt.feed()
-    if powerStatus.value() == 0 and uart0.any():
+    if powerStatus.value() == 1 and uart0.any():
         data = str(uart0.readline()).strip()  # Read a line of data from the UART
         uart0.write(f"xSAM_INFO: {int(data)}\n")
         try:
@@ -141,13 +133,11 @@ while True:
                 break
             wdt.feed()
             utime.sleep_ms(10)
-        if utime.ticks_diff(utime.ticks_ms(), start_time) >= 2000 and powerStatus.value() == 1:
-            powerStatus.low()  # inverted logic
-            einkStatus.high() # provide power to eink
-
+        if utime.ticks_diff(utime.ticks_ms(), start_time) >= 2000 and powerStatus.value() == 0:
+            powerStatus.high()
+            einkStatus.high()  # inverted logic
             uart0.write("xPOWER_ON\n")
-            if not DEBUG:
-                nukeUSB.high()
+            nukeUSB.high()
             # Turn on the power on loading screen
             if einkRunning == False:
                 try:
@@ -169,13 +159,11 @@ while True:
                 uart0.write(f"{EncodeTable['SHUT_DOWN']}\n")
             wdt.feed()
             utime.sleep_ms(10)
-        if utime.ticks_diff(utime.ticks_ms(), start_time) >= 10000 and powerStatus.value() == 0:
-            powerStatus.high() # inverted logic
-            einkStatus.low()  
-            einkMux.high() # Let SAM take back control of the eink
+        if utime.ticks_diff(utime.ticks_ms(), start_time) >= 10000 and powerStatus.value() == 1:
+            powerStatus.low()
+            einkStatus.low()  # inverted logic
             uart0.write("xFORCE_POWER_OFF\n")
-            if not DEBUG:
-                nukeUSB.low()
+            nukeUSB.low()
             einkRunning = False
 
     utime.sleep_ms(1)

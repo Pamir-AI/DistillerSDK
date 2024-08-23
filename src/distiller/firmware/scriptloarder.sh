@@ -22,7 +22,7 @@ install_dependencies() {
 install_dependencies
 
 # Define the files and commands
-files=("Bin/loading1.bin" "Bin/loading2.bin" "eink_driver_sam.py" "main.py")
+files=("Bin/Default/loading1.bin" "Bin/Default/loading2.bin" "eink_driver_sam.py" "main.py")
 port="/dev/tty.usb*"
 
 # Total number of files

@@ -4,7 +4,7 @@ from eink_driver_sam import einkDSP_SAM
 import _thread
 from machine import WDT
 
-DEBUG = False
+FLASH = True
 
 #Instruction Set
 EncodeTable = {"BTN_UP": 0b1, "BTN_DOWN": 0b10, "BTN_SELECT": 0b100, "SHUT_DOWN": 0b1000}
@@ -107,8 +107,9 @@ def delayed_power_off():
     powerStatus.high()  # inverted logic
     einkStatus.low()
     einkMux.high() 
-    if not DEBUG :
-        nukeUSB.low()
+        
+    if FLASH:
+        nukeUSB.low() # Enable SAM USB
 
     try:
         if eink.init == False:
@@ -146,8 +147,10 @@ while True:
             einkStatus.high() # provide power to eink
 
             uart0.write("xPOWER_ON\n")
-            if not DEBUG:
-                nukeUSB.high()
+                
+            if FLASH:
+                nukeUSB.high() # Disable SAM USB
+        
             # Turn on the power on loading screen
             if einkRunning == False:
                 try:
@@ -174,8 +177,9 @@ while True:
             einkStatus.low()  
             einkMux.high() # Let SAM take back control of the eink
             uart0.write("xFORCE_POWER_OFF\n")
-            if not DEBUG:
+            if FLASH:
                 nukeUSB.low()
+           
             einkRunning = False
 
     utime.sleep_ms(1)

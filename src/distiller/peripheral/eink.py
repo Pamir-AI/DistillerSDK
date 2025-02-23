@@ -218,3 +218,31 @@ class Eink:
         int_pixels = [int(bits, 2) for bits in grouped_pixels]
 
         return [int(x) for x in int_pixels]
+
+
+    def save_dithered_image(self, pil_image, TARGET_WIDTH, TARGET_HEIGHT):
+
+        # Apply 2-bit preprocessing
+        processed_pixels = self.preprocess_2bit(pil_image)
+        
+        # Convert processed pixels to binary string
+        binary_string = ''.join(f'{pixel:08b}' for pixel in processed_pixels)
+        
+        # Pad the binary string to ensure it's divisible by TARGET_WIDTH*TARGET_HEIGHT*2
+        target_length = TARGET_WIDTH * TARGET_HEIGHT * 2
+        binary_string = binary_string.ljust(target_length, '0')
+        
+        # Convert binary string to 2-bit array
+        bit_array = np.array([int(binary_string[i:i+2], 2) for i in range(0, len(binary_string), 2)])
+        
+        # Reshape to TARGET_HEIGHT x TARGET_WIDTH
+        processed_image = bit_array.reshape((TARGET_HEIGHT, TARGET_WIDTH))
+        
+        # Scale to 0-255 range
+        processed_image = (processed_image / 3 * 255).astype(np.uint8)
+        
+        # Create PIL Image from processed array
+        output_image = Image.fromarray(processed_image, mode='L')
+        
+        # Save as PNG
+        output_image.save("./dithered_image_capture.png")

@@ -39,6 +39,10 @@ class HomePageUI(ScrollGUI):
         #                            icon_path=resource_filename('distiller', os.path.join(
         #                                'resources', 'icons', 'game.png'))))
 
+        self.add_component(TextBox(text="DS_demo",
+                                   size=size, font_size=20, line_thickness=line_thickness, corner_radius=5,
+                                   icon_path=resource_filename('distiller', os.path.join(
+                                       'resources', 'icons', 'mic.png'))))
         self.add_component(TextBox(text="wifi_setting",
                                    size=size, font_size=20, line_thickness=line_thickness, corner_radius=5,
                                    icon_path=resource_filename('distiller', os.path.join(
@@ -48,19 +52,15 @@ class HomePageUI(ScrollGUI):
                                         icon_path=resource_filename('distiller', os.path.join(
                                             'resources', 'icons', 'paint.png'))
                                    ))
-        self.add_component(TextBox(text="ebook_kid",
-                                   size=size, font_size=20, line_thickness=line_thickness, corner_radius=5,
-                                   icon_path=resource_filename('distiller', os.path.join(
-                                       'resources', 'icons', 'book.bmp'))))
-        # transcription - not much to show as an app, comment out 
-        # self.add_component(TextBox(text="transcription",
+        # self.add_component(TextBox(text="ebook_kid",
         #                            size=size, font_size=20, line_thickness=line_thickness, corner_radius=5,
         #                            icon_path=resource_filename('distiller', os.path.join(
-        #                                'resources', 'icons', 'mic.png'))))
-        self.add_component(TextBox(text="camera_paint",
-                                   size=size, font_size=20, line_thickness=line_thickness, corner_radius=5,
-                                   icon_path=resource_filename('distiller', os.path.join(
-                                       'resources', 'icons', 'camera.png'))))
+        #                                'resources', 'icons', 'book.bmp'))))
+        # transcription - not much to show as an app, comment out 
+        # self.add_component(TextBox(text="camera_paint",
+        #                            size=size, font_size=20, line_thickness=line_thickness, corner_radius=5,
+        #                            icon_path=resource_filename('distiller', os.path.join(
+        #                                'resources', 'icons', 'camera.png'))))
         self.add_component(TextBox(text="gallery",
                                    size=size, font_size=20, line_thickness=line_thickness, corner_radius=5,
                                    icon_path=resource_filename('distiller', os.path.join(

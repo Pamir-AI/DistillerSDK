@@ -52,7 +52,7 @@ inpaint_model_config = {
     "model_name": "inpaint",
     "model_path": '/home/distiller/models/dreamshaper-8-inpainting-fused-onnx',
     "neg_prompt": 'bad hand, bad face, worst quality, low quality, logo, text, watermark, username, harsh shadow, shadow, artifacts, blurry, smooth texture, bad quality, distortions, unrealistic, distorted image, bad proportions, duplicate',
-    "prompt": 'masterpiece, best quality, a cute kitten', # edit this for the inpaint prompt
+    "prompt": 'masterpiece, best quality, ink drawing style, anime style', # edit this for the inpaint prompt
     'sam_prompt': 'face' # edit this fot SAM prompt
 }
 inpaint_path = "./temp-inpaint.png"
@@ -303,6 +303,10 @@ class CamPage(Page):
                 self.captured_image = self.cam.capture()  # stop cam, save pic
                 # save to asset folder so we can revisit in gallery
                 self.captured_image.save(f"{saving_path}/{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.png")
+
+                # save as dithered image 
+                self.app.screen.save_dithered_image(self.captured_image, 128*2, 128*3)
+
                 # show captured image in display
                 self.ui.canvas.flush()  # flush out texts
                 self.display(self.captured_image)

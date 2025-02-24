@@ -26,7 +26,7 @@ class LlamaServerClient:
         self.endpoint = endpoint
         self.default_params = kwargs
         self.current_response = None  # Add this to track the response object
-        self.default_prompt = "Your name is PAMIR-R1. You are a helpful companion with empathetic and friendly tone. DO NOT OVERTHINK, Try to answer question in a very concise sentence in a casual chatting way. \n "
+        self.default_prompt = "You are a helpful companion named PAMIR-R1, you speak in empathetic and friendly tone. Try to answer question in a very concise sentence in a casual chatting way. DO NOT OVERTHINK. \n "
 
     def generate(self, prompt, stream=False, **kwargs):
         """
@@ -113,10 +113,6 @@ def stream_sentence(stream):
         if stop:
             break
 
-        # early stop if stop words are in the content
-        if any(word in content for word in STOP_WORDS):
-            break
-
         # Check for </think> tag
         if "</think>" in content:
             # Split content at </think> tag
@@ -126,6 +122,15 @@ def stream_sentence(stream):
             if thinking_part:
                 for temp in thinking_part.replace('\n', " "):
                     sentence += temp
+                    
+                    # early stop if stop words are in the content
+                    if any(word in sentence.lower() for word in STOP_WORDS):
+                        # trim the sentence to the last complete sentence
+                        sentence = sentence.rsplit(' ', 1)[0]
+                        yield "thinking: ---> " + sentence.strip()
+                        sentence = ""
+                        break
+                    
                     if is_sentence_ending(temp):
                         yield "thinking: ---> " + sentence.strip()
                         sentence = ""

@@ -121,6 +121,7 @@ class DemoPage(Page):
             user_text += sentence
             self.display_user_text(user_text)
         print("[LLM] user_text", user_text)
+        self.start_tts_worker()
         self.send_to_llm(user_text)
 
     def display_user_text(self, text):
@@ -137,15 +138,16 @@ class DemoPage(Page):
         if not active.is_set():
             return
 
-        prompt = f"<|user|>\n{text}\n<|assistant|>"
+        prompt = f"<|user|>\n{text}\n<|assistant|> : \n <think> " # provoke think 
         try:
             self.llm_generator = self.llm.generate(prompt, stream=True)
             for sentence in stream_sentence(self.llm_generator):
                 print("[LLM] sentence ", sentence)
                 self.display_llm_text(sentence)
                 if "answer: --->" in sentence:
+                    print("[TTS] queueing ", sentence)
                     self.tts_queue.put(sentence.split("answer: --->")[1].strip())
-                    
+
         except Exception as e:
             logging.error(f"LLM generation error: {e}")
             self.show_text("Error generating response.")
@@ -172,17 +174,20 @@ class DemoPage(Page):
             self.thread_worker = None
 
     def process_tts_queue(self, active: threading.Event, *args):
+        logging.info("Processing TTS queue")
         while active.is_set():
             if not self.tts_queue.empty():
                 text = self.tts_queue.get()
                 if text:
                     try:
+                        logging.info(f"Speaking: {text}")
                         self.tts.speak(text)
                     except Exception as e:
                         logging.error(f"TTS error: {e}")
             time.sleep(0.1)  # Small delay to prevent CPU hogging
 
     def start_tts_worker(self):
+        logging.info("Starting TTS worker")
         if not self.tts_worker or not self.tts_worker.active.is_set():
             self.tts_worker = ThreadWorker()
             self.tts_worker.start(self.process_tts_queue)

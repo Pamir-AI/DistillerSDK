@@ -80,3 +80,11 @@ sudo apt-get install python3-dev spidev
 sudo apt-get update
 sudo apt-get install python3-libgpiod
 
+## CM5
+sudo apt remove python3-rpi.gpio 
+sudo apt install python3-rpi-lgpio 
+
+sudo apt-get update
+sudo apt-get install portaudio19-dev python3-pyaudio
+
+bus = 10

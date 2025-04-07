@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Constants
-SERIAL_PORT = '/dev/ttyAMA3'
+SERIAL_PORT = '/dev/ttyAMA2'
 BAUD_RATE = 9600
 TIMEOUT = 1
 

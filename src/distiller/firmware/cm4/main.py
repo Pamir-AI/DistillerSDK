@@ -4,7 +4,7 @@ from eink_driver_sam import einkDSP_SAM
 import _thread
 from machine import WDT
 
-FLASH = True #for production flash, set to true for usb debug
+FLASH = True
 
 #Instruction Set
 EncodeTable = {"BTN_UP": 0b1, "BTN_DOWN": 0b10, "BTN_SELECT": 0b100, "SHUT_DOWN": 0b1000}
@@ -14,16 +14,17 @@ wdt = WDT(timeout=2000)
 selectBTN = machine.Pin(16, machine.Pin.IN, machine.Pin.PULL_DOWN)
 upBTN = machine.Pin(17, machine.Pin.IN, machine.Pin.PULL_DOWN)
 downBTN = machine.Pin(18, machine.Pin.IN, machine.Pin.PULL_DOWN)
+powerStatus = machine.Pin(21, machine.Pin.OUT)
 einkStatus = machine.Pin(9, machine.Pin.OUT)
 einkMux = machine.Pin(22, machine.Pin.OUT)
 
 sam_interrupt = machine.Pin(2, machine.Pin.OUT)
 
 nukeUSB = machine.Pin(19, machine.Pin.OUT, value = 0)
-if FLASH:
-    nukeUSB.high() # Disable SAM USB
+
 # Setup UART0 on GPIO0 (TX) and GPIO1 (RX)
 uart0 = machine.UART(0, baudrate=9600, tx=machine.Pin(0), rx=machine.Pin(1))
+powerStatus.high()
 einkMux.low()
 einkStatus.low()
 
@@ -50,7 +51,6 @@ def send_button_state():
     state_byte |= get_debounced_state(selectBTN) * EncodeTable["BTN_SELECT"]
     state_byte |= get_debounced_state(upBTN)  * EncodeTable["BTN_UP"]
     state_byte |= get_debounced_state(downBTN) * EncodeTable["BTN_DOWN"]
-    print(f"state_byte: {state_byte}")
     uart0.write(f"{state_byte}\n")
 
 # Interrupt handler for down button
@@ -70,27 +70,17 @@ upBTN.irq(trigger=machine.Pin.IRQ_RISING, handler=button_handler)
 downBTN.irq(trigger=machine.Pin.IRQ_RISING, handler=button_handler)
 sam_interrupt.irq(trigger=machine.Pin.IRQ_RISING, handler=loading_terminator)
 
-# Add lock for shared variable
-eink_lock = _thread.allocate_lock()
 einkRunning = False
 
 def eink_task():
-    global einkRunning
+    global einkRunning  # Declare einkRunning as a global variable
     repeat = 0
     try:
         if eink.init == False:
             eink.re_init()
         eink.epd_init_fast()
-        try:
-            eink.PIC_display(None, './loading1.bin')
-        except OSError:
-            print("Loading files not found")
-            einkRunning = False
-            return
-        while True:
-            with eink_lock:
-                if not einkRunning or repeat >= 3:
-                    break
+        eink.PIC_display(None, './loading1.bin')
+        while einkRunning and repeat < 3:
             eink.epd_init_part()
             eink.PIC_display('./loading1.bin', './loading2.bin')
             eink.epd_init_part()
@@ -98,26 +88,37 @@ def eink_task():
             wdt.feed()
             repeat += 1
         eink.de_init()
-        with eink_lock:
-            einkRunning = False
-        einkMux.low()
+        einkRunning = False
+        einkMux.low() # Let SoM take control of the eink
         print("Eink Task Returned")
     except Exception as e:
         print(f"Exception {e}")
         eink.de_init()
-        with eink_lock:
-            einkRunning = False
+        einkRunning = False
 
-einkStatus.high() # provide power to eink
-einkMux.high()
-uart0.write("StartScreen\n")
-    
-# Turn on the power on loading screen
-if einkRunning == False:
+def delayed_power_off():
+    global powerStatus
+    global einkStatus
+    global nukeUSB
+    global einkRunning
+    start_time = utime.ticks_ms()
+    while utime.ticks_diff(utime.ticks_ms(), start_time) < 4000:
+        utime.sleep_ms(10)
+    powerStatus.high()  # inverted logic
+    einkStatus.low()
+    einkMux.low() 
+        
+    if FLASH:
+        nukeUSB.low() # Enable SAM USB
+
     try:
-        einkRunning = True
-        _thread.start_new_thread(eink_task, ())
-        print("Non Blocking")
+        if eink.init == False:
+            eink.re_init()
+        eink.epd_init_fast()
+        eink.PIC_clear()
+        eink.de_init()
+        einkRunning = False
+        print("Eink Task Returned")
     except Exception as e:
         print(f"Exception {e}")
         eink.de_init()
@@ -125,21 +126,43 @@ if einkRunning == False:
 
 while True:
     wdt.feed()
-    try:
-        raw_data = uart0.readline()
-        if raw_data:
-            data = str(raw_data).strip()
-            try:
-                uart0.write(f"xSAM_INFO: {int(data)}\n")
-            except ValueError:
-                print(f"Invalid integer data received: {data}")
-    except Exception as e:
-        print(f"Error reading UART: {e}")
-       
-    if debounce(selectBTN) and selectBTN.value() == 1 and upBTN.value() == 0 and downBTN.value() == 0:
-        print("selectBTN pressed")
-       
+    if powerStatus.value() == 0 and uart0.any():
+        data = str(uart0.readline()).strip()  # Read a line of data from the UART
+        uart0.write(f"xSAM_INFO: {int(data)}\n")
+        try:
+            if int(data) == 15:  # Check if the received value matches 0b1111
+                _thread.start_new_thread(delayed_power_off, ())
+        except ValueError:
+            print("Received non-binary data or malformed data")
 
+    if debounce(selectBTN) and selectBTN.value() == 1 and upBTN.value() == 0 and downBTN.value() == 0:
+        start_time = utime.ticks_ms()
+        while utime.ticks_diff(utime.ticks_ms(), start_time) < 2000:
+            if selectBTN.value() == 0:
+                break
+            wdt.feed()
+            utime.sleep_ms(10)
+        if utime.ticks_diff(utime.ticks_ms(), start_time) >= 2000 and powerStatus.value() == 1:
+            powerStatus.low()  # inverted logic
+            einkStatus.high() # provide power to eink
+
+            uart0.write("xPOWER_ON\n")
+                
+            if FLASH:
+                nukeUSB.high() # Disable SAM USB
+        
+            # Turn on the power on loading screen
+            if einkRunning == False:
+                try:
+                    einkRunning = True
+                    _thread.start_new_thread(eink_task, ())
+                    print("Non Blocking")
+                except Exception as e:
+                    print(f"Exception {e}")
+                    eink.de_init()
+                    einkRunning = False
+
+    
     if debounce(upBTN) and selectBTN.value() == 1:
         start_time = utime.ticks_ms()
         while utime.ticks_diff(utime.ticks_ms(), start_time) < 10000:
@@ -149,10 +172,11 @@ while True:
                 uart0.write(f"{EncodeTable['SHUT_DOWN']}\n")
             wdt.feed()
             utime.sleep_ms(10)
-        if utime.ticks_diff(utime.ticks_ms(), start_time) >= 10000:
+        if utime.ticks_diff(utime.ticks_ms(), start_time) >= 10000 and powerStatus.value() == 0:
+            powerStatus.high() # inverted logic
             einkStatus.low()  
             einkMux.low() # Let SAM take back control of the eink
-            uart0.write("xSAM_USB\n")
+            uart0.write("xFORCE_POWER_OFF\n")
             if FLASH:
                 nukeUSB.low()
            

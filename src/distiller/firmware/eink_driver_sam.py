@@ -222,9 +222,10 @@ class einkDSP_SAM:
         self.delay_xms(1)  # Necessary delay for the display refresh
         self.lcd_chkstatus()  # Check if the display is ready
 
-
+# einkMux = machine.Pin(22, machine.Pin.OUT)
 # einkStatus = machine.Pin(9, machine.Pin.OUT)
-# einkStatus.high()
+# einkMux.high()  # inverted logic
+# einkStatus.high() # provide power to eink
 
 # eink = einkDSP_SAM()
 # # eink.epd_init()
